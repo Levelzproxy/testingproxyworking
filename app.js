@@ -1,6 +1,6 @@
 /**
- * WebUnblocker - Static Web Proxy & Browser Emulator
- * Architecture: Client-Side CORS Proxies, Iframe Sandboxing, HTML rewriting & URL resolver
+ * Nebula Browser - Static Proxy & Browser Gateway
+ * Architecture: Multi-tier fallback (CORS Proxies, Reader Emulation, Direct Sandbox)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,65 +13,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingText = document.getElementById('loading-text');
     const errorBanner = document.getElementById('error-banner');
     const errorMessage = document.getElementById('error-message');
+    const errorOpenExternal = document.getElementById('error-open-external');
     const dismissError = document.getElementById('dismiss-error');
-    const engineSelect = document.getElementById('engine-select');
+    const modeSelect = document.getElementById('mode-select');
     
     const backBtn = document.getElementById('back-btn');
     const forwardBtn = document.getElementById('forward-btn');
     const reloadBtn = document.getElementById('reload-btn');
     const homeBtn = document.getElementById('home-btn');
-    const newTabBtn = document.getElementById('new-tab-btn');
-    const quickLinks = document.querySelectorAll('.quick-link');
-
-    const settingsBtn = document.getElementById('settings-btn');
-    const settingsModal = document.getElementById('settings-modal');
-    const closeSettings = document.getElementById('close-settings');
-    const saveSettings = document.getElementById('save-settings');
-    const customProxyInput = document.getElementById('custom-proxy-input');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const aboutBlankBtn = document.getElementById('about-blank-btn');
+    const quickCards = document.querySelectorAll('.quick-card');
 
     let historyStack = [];
     let historyIndex = -1;
     let currentUrl = '';
 
-    // Load settings from localStorage
-    if (localStorage.getItem('webunblocker_proxy')) {
-        customProxyInput.value = localStorage.getItem('webunblocker_proxy');
-    }
-
-    settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
-    closeSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
-    saveSettings.addEventListener('click', () => {
-        localStorage.setItem('webunblocker_proxy', customProxyInput.value.trim());
-        settingsModal.classList.add('hidden');
-    });
-
-    dismissError.addEventListener('click', () => errorBanner.classList.add('hidden'));
-
-    // Quick links handler
-    quickLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            const targetUrl = link.getAttribute('data-url');
+    // Quick card clicks
+    quickCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const targetUrl = card.getAttribute('data-url');
             urlInput.value = targetUrl;
             navigateTo(targetUrl);
         });
     });
 
-    // Form submit handler
+    // Form submission
     urlForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        let rawUrl = urlInput.value.trim();
-        if (!rawUrl) return;
+        let query = urlInput.value.trim();
+        if (!query) return;
 
-        // Check if it's a search query or URL
-        if (!rawUrl.includes('.') || rawUrl.includes(' ') || rawUrl.startsWith('search?')) {
-            rawUrl = `https://duckduckgo.com/?q=${encodeURIComponent(rawUrl)}`;
+        let targetUrl = '';
+        if (query.startsWith('http://') || query.startsWith('https://')) {
+            targetUrl = query;
+        } else if (query.includes('.') && !query.includes(' ') && !query.startsWith('search?')) {
+            targetUrl = 'https://' + query;
         } else {
-            if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-                rawUrl = 'https://' + rawUrl;
-            }
+            targetUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
         }
-        urlInput.value = rawUrl;
-        navigateTo(rawUrl);
+
+        urlInput.value = targetUrl;
+        navigateTo(targetUrl);
     });
 
     homeBtn.addEventListener('click', () => {
@@ -90,48 +73,81 @@ document.addEventListener('DOMContentLoaded', () => {
     backBtn.addEventListener('click', () => {
         if (historyIndex > 0) {
             historyIndex--;
-            loadHistoryItem(false);
+            loadHistory(false);
         }
     });
 
     forwardBtn.addEventListener('click', () => {
         if (historyIndex < historyStack.length - 1) {
             historyIndex++;
-            loadHistoryItem(false);
+            loadHistory(false);
         }
     });
 
-    newTabBtn.addEventListener('click', () => {
-        if (currentUrl) {
-            window.open(currentUrl, '_blank');
+    dismissError.addEventListener('click', () => errorBanner.classList.add('hidden'));
+
+    errorOpenExternal.addEventListener('click', () => {
+        if (currentUrl) window.open(currentUrl, '_blank');
+    });
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => console.error(err));
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
         }
+    });
+
+    // Cloaked about:blank launcher
+    aboutBlankBtn.addEventListener('click', () => {
+        const win = window.open('about:blank', '_blank');
+        if (!win) {
+            alert('Popup blocked! Please allow popups for this site to use about:blank cloaking.');
+            return;
+        }
+        const doc = win.document;
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Classes</title>
+                <link rel="icon" href="https://ssl.gstatic.com/classroom/ic_product_classroom_32.png">
+                <style>
+                    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0f172a; }
+                    iframe { width: 100%; height: 100%; border: none; }
+                </style>
+            </head>
+            <body>
+                <iframe src="${window.location.href}"></iframe>
+            </body>
+            </html>
+        `);
+        doc.close();
     });
 
     function navigateTo(targetUrl, isReload = false) {
         currentUrl = targetUrl;
         urlInput.value = targetUrl;
-        
-        // Update history if not a reload
+
         if (!isReload) {
-            // Trim forward history if we were back in stack
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(targetUrl);
             historyIndex = historyStack.length - 1;
         }
         updateNavButtons();
 
-        // Switch views
         homepageView.classList.add('hidden');
         viewportContainer.classList.remove('hidden');
         errorBanner.classList.add('hidden');
         loadingOverlay.classList.remove('opacity-0', 'pointer-events-none');
-        loadingText.textContent = `Fetching via ${engineSelect.value} proxy...`;
+        loadingText.textContent = `Connecting to gateway (${modeSelect.value})...`;
 
-        const engine = engineSelect.value;
-        loadViaEngine(targetUrl, engine);
+        loadContent(targetUrl, modeSelect.value);
     }
 
-    function loadHistoryItem(isReload) {
+    function loadHistory(isReload) {
         const targetUrl = historyStack[historyIndex];
         navigateTo(targetUrl, true);
     }
@@ -141,89 +157,120 @@ document.addEventListener('DOMContentLoaded', () => {
         forwardBtn.disabled = historyIndex >= historyStack.length - 1;
     }
 
-    async function loadViaEngine(targetUrl, engine) {
-        const customProxy = localStorage.getItem('webunblocker_proxy');
-        
+    async function loadContent(targetUrl, mode) {
         try {
-            if (engine === 'iframe') {
-                // Direct iframe loading (works for sites with no CSP/X-Frame-Options)
+            if (mode === 'embed') {
+                // Direct iframe embed
                 browserFrame.src = targetUrl;
-                setTimeout(() => loadingOverlay.classList.add('opacity-0', 'pointer-events-none'), 1000);
+                setTimeout(() => {
+                    loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+                }, 1200);
+
+                // Detect if frame fails or blocks
+                setTimeout(() => {
+                    try {
+                        const frameDoc = browserFrame.contentDocument || browserFrame.contentWindow.document;
+                        if (!frameDoc || frameDoc.body.childElementCount === 0) {
+                            throw new Error('Frame blocked by X-Frame-Options');
+                        }
+                    } catch (e) {
+                        // Likely blocked by X-Frame-Options or CORS
+                        errorBanner.classList.remove('hidden');
+                        errorMessage.textContent = 'Website has anti-embedding security (X-Frame-Options). Click "Open New Tab" or switch mode to CORS Proxy.';
+                    }
+                }, 2500);
                 return;
             }
 
-            let proxyUrl = '';
-            if (customProxy) {
-                proxyUrl = customProxy + encodeURIComponent(targetUrl);
-            } else if (engine === 'allorigins') {
-                proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-            } else if (engine === 'codetabs') {
-                proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
-            } else if (engine === 'thingproxy') {
-                proxyUrl = `https://thingproxy.freeboard.io/fetch/${targetUrl}`;
-            } else if (engine === 'rawfetch') {
-                proxyUrl = targetUrl; // Direct fetch
+            if (mode === 'cors') {
+                // Fetch through public CORS proxies with fallback chain
+                const corsProxies = [
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+                    `https://thingproxy.freeboard.io/fetch/${targetUrl}`
+                ];
+
+                let html = null;
+                let success = false;
+
+                for (const proxy of corsProxies) {
+                    try {
+                        const res = await fetch(proxy);
+                        if (res.ok) {
+                            html = await res.text();
+                            success = true;
+                            break;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+
+                if (!success || !html) {
+                    throw new Error('All CORS proxies failed to fetch target URL');
+                }
+
+                // Rewrite HTML links and resources
+                html = rewriteHtml(html, targetUrl);
+                browserFrame.srcdoc = html;
+                loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+                return;
             }
 
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            let htmlContent = await response.text();
-
-            // Rewrite relative links and assets to route through proxy
-            htmlContent = rewriteHtmlContent(htmlContent, targetUrl);
-
-            // Inject into iframe via srcdoc
-            browserFrame.srcdoc = htmlContent;
-            
-            setTimeout(() => {
+            if (mode === 'emulator') {
+                // Smart reader / emulator mode for search & articles
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+                const res = await fetch(proxyUrl);
+                if (!res.ok) throw new Error('Failed to load emulator stream');
+                let html = await res.text();
+                
+                html = rewriteHtml(html, targetUrl);
+                browserFrame.srcdoc = html;
                 loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
-            }, 600);
+                return;
+            }
 
         } catch (err) {
-            console.warn('Proxy fetch error, falling back to direct iframe embed:', err);
+            console.warn('Gateway load warning:', err);
             loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
             
             // Fallback to direct iframe
             browserFrame.src = targetUrl;
-            
             errorBanner.classList.remove('hidden');
-            errorMessage.textContent = `CORS/Network restriction prevented full proxy rewrite (${err.message}). Attempting direct sandbox embed...`;
+            errorMessage.textContent = `Gateway restriction: ${err.message}. Attempting direct sandbox load...`;
         }
     }
 
-    function rewriteHtmlContent(html, baseUrl) {
+    function rewriteHtml(html, baseUrl) {
         try {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
-            const baseObj = new URL(baseUrl);
 
-            // Rewrite <a> tags
+            // Rewrite links
             doc.querySelectorAll('a').forEach(a => {
                 const href = a.getAttribute('href');
                 if (href && !href.startsWith('javascript:') && !href.startsWith('#')) {
                     try {
-                        const absoluteUrl = new URL(href, baseUrl).href;
+                        const abs = new URL(href, baseUrl).href;
                         a.setAttribute('href', '#');
-                        a.setAttribute('data-proxy-url', absoluteUrl);
                         a.onclick = (e) => {
                             e.preventDefault();
-                            urlInput.value = absoluteUrl;
-                            navigateTo(absoluteUrl);
+                            urlInput.value = abs;
+                            navigateTo(abs);
                         };
                     } catch (e) {}
                 }
             });
 
-            // Rewrite images, scripts, stylesheets
+            // Rewrite media and scripts
             ['img', 'script', 'link', 'iframe', 'source'].forEach(tag => {
                 doc.querySelectorAll(tag).forEach(el => {
                     const attr = tag === 'link' ? 'href' : 'src';
                     const val = el.getAttribute(attr);
                     if (val && !val.startsWith('data:') && !val.startsWith('blob:')) {
                         try {
-                            const absoluteUrl = new URL(val, baseUrl).href;
-                            el.setAttribute(attr, absoluteUrl);
+                            const abs = new URL(val, baseUrl).href;
+                            el.setAttribute(attr, abs);
                         } catch (e) {}
                     }
                 });
@@ -231,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return doc.documentElement.outerHTML;
         } catch (e) {
-            console.error('HTML rewriting failed:', e);
             return html;
         }
     }
