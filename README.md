@@ -1,36 +1,20 @@
-# WebUnblocker - Static Web Proxy & Browser
+# Nebula Browser - Static Proxy Gateway
 
-A fully client-side static web proxy and browser emulator designed to be deployed instantly on **GitHub Pages**, **Vercel**, **Netlify**, or any static hosting provider.
-
-Inspired by modern client-side unblockers and browser emulators, WebUnblocker enables users to browse websites securely through public CORS proxies and sandboxed iframes without needing a complex Node.js or Go server backend.
+An advanced, bulletproof static web proxy and browser gateway designed specifically for static hosts like **GitHub Pages**, **Vercel**, **Netlify**, and **Cloudflare Pages**.
 
 ---
 
 ## 🌟 Key Features
 
-1. **100% Static Architecture**: Zero server-side runtime required. Deployable on any static hosting service (GitHub Pages, Vercel, Netlify, Cloudflare Pages).
-2. **Multiple Proxy Engines**: Switch between AllOrigins, CodeTabs, ThingProxy, Direct Fetch, and Iframe Sandbox.
-3. **Custom CORS Proxy Support**: Configure your own custom CORS proxy endpoint in the settings modal.
-4. **Interactive Browser Toolbar**: Fully functional Back, Forward, Reload, Home navigation controls and URL bar with autocomplete/search integration (DuckDuckGo search fallback).
-5. **Asset & Link Rewriting**: Automatically parses and resolves relative links and media resources to maintain browsing flow.
-6. **Responsive Dark UI**: Sleek, modern Tailwind CSS interface optimized for desktop and mobile devices.
+1. **100% Static Client-Side Architecture**: No Node.js backend required.
+2. **Multi-Tier Fallback Engine**: Switches seamlessly between Direct Sandbox Embedding, CORS Proxy Gateways, and Emulator Reader mode.
+3. **`about:blank` Tab Cloaker**: Instantly cloaks the browser tab into an invisible/disguised educational app (e.g. Google Classroom icon and title) with a single click.
+4. **Fullscreen & Responsive Controls**: Full browser toolbar with navigation history, reload, home shortcuts, and search integration.
 
 ---
 
 ## 🚀 Quick Deployment to GitHub Pages
 
-1. Create a new repository on GitHub (e.g., `webunblocker`).
-2. Upload the contents of this folder (`index.html`, `app.js`, `README.md`) to your repository.
-3. Go to your repository **Settings** -> **Pages**.
-4. Under **Build and deployment**, select **Source** as `Deploy from a branch` and choose `main` / `root`.
-5. Save and visit your published GitHub Pages URL!
-
----
-
-## 🛠️ Local Development
-
-To run locally, simply open `index.html` in your browser or spin up a local static server:
-
-```bash
-npx http-server web-proxy-static -p 8080
-```
+1. Create a new repository on GitHub.
+2. Upload `index.html`, `app.js`, and this `README.md`.
+3. Go to **Settings** > **Pages** and enable GitHub Pages on the `main` branch.
